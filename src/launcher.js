@@ -1,12 +1,22 @@
 import Store from "./store.js";
+import fs from "fs";
+
+function rawData() {
+  return fs
+    .readFileSync("dataset/IMDB_movie_details.json", "utf8") 
+    .split("\n")
+    .map((line) => {
+      let lineObj = JSON.parse(line);
+      return { text: lineObj["plot_synopsis"], id: lineObj.id };
+    });
+}
+
 async function launch() {
   let store = new Store();
-  store.insert("1", "Hey There. This is document 1");
-  store.insert("2", "Hello! Document 2 says hi!");
-  store.insert("3", "Hi, Document 3 reporting ot!");
-  store.insert("4", "NOPE; polar bear");
-
-  const queries = ["document there", "polar", "ot document", "fibonacci"];
+  rawData().map(({ text: text, id: id }) => {
+    store.insert(id, text);
+  });
+  const queries = ["Al Pacino", "Robert De niro", "Ship iceberg atlantic", "fibonacci"];
   queries.map(async (query) => {
     store.search(query).then((results) => {
       console.log(`Query: ${query}`);
@@ -15,3 +25,9 @@ async function launch() {
   });
 }
 launch();
+
+//ToDo:
+/** correct comments
+ * index 1500 movie plots
+ *
+ * */

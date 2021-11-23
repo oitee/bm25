@@ -93,12 +93,7 @@ export default class Store {
    */
 
   wordArray(str) {
-    let regex = /[\W]+/;
-    let words = str.split(regex);
-    if (words[words.length - 1] === "") {
-      words.pop();
-    }
-    return words;
+    return str.split(/[\W]+/).filter((word) => word.length > 0);
   }
 
   /**
@@ -107,13 +102,13 @@ export default class Store {
    * @returns {null}
    * Implements query search and logs the documents which contain the query string, in order of relevance
    */
-  async search(queryStr) {
+  async search(queryStr, limit = 10) {
     const queryTerms = this.wordArray(queryStr);
 
     const scoreDocs = await Promise.all(
       Object.keys(this.docIndex).map(async (id) => {
         let result = await this.score(id, this.documentTF[id], queryTerms);
-        result.text = this.docIndex[id];
+        result.text = this.docIndex[id].substring(0, 50) + "...";
         return result;
       })
     );
@@ -121,7 +116,8 @@ export default class Store {
       .filter((doc) => doc.score > 0)
       .sort((a, b) => {
         return b.score - a.score;
-      });
+      })
+      .slice(0, limit);
   }
 
   /**

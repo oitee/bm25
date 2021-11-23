@@ -69,24 +69,25 @@ class DocStore {
     this.listOfDocIds[docId] = str;
     let words = this.wordArray(str);
     words.map((word) => {
+      // todo: Remove duplicate words within a document; alt, use set to [or remove duplicates]
       if (this.wordList.hasOwnProperty(word)) {
         this.wordList[word]++;
       } else {
         this.wordList[word] = 1;
       }
     });
-    let listOfWordsInThisDoc = {};
+    let wordsInDoc = {}; // Todo: convert into a JS MAP
     let wordCount = 0;
     words.map((word) => {
-      if (listOfWordsInThisDoc.hasOwnProperty(word)) {
-        listOfWordsInThisDoc[word]++;
+      if (wordsInDoc.hasOwnProperty(word)) {
+        wordsInDoc[word]++;
       } else {
-        listOfWordsInThisDoc[word] = 1;
+        wordsInDoc[word] = 1;
       }
       wordCount++;
     });
 
-    this.documentList[docId] = listOfWordsInThisDoc;
+    this.documentList[docId] = wordsInDoc;
     this.totalWordCount += wordCount;
     this.numberOfDocs++;
     this.averageLength = this.totalWordCount / this.numberOfDocs;
@@ -116,39 +117,27 @@ class DocStore {
    */
   search(queryStr) {
     let queryTerms = this.wordArray(queryStr);
-    let idfObject = this.idf(queryTerms);
-    if(Object.keys(idfObject).length === 0){
-      console.log("No Matching results");
-      return;
-    }
+    
+    
     let documentsWithQuery = {};
     for (let docId in this.documentList) {
       let docScore = this.score(
         this.documentList[docId],
-        queryTerms,
-        idfObject
+        queryTerms
       );
       if (docScore > 0) {
         documentsWithQuery[docId] = docScore;
-      }
-      if(Object.keys(documentsWithQuery).length === 0){
-        console.log(`No matching result for the query: ${queryStr}`);
-        return;
       }
     }
     // sorting the documents:
     let sortedDocs = [];
     for (let docId in documentsWithQuery) {
-      sortedDocs.push([docId, [documentsWithQuery[docId]]]);
+      sortedDocs.push({id: docId, text: this.listOfDocIds[docId], score: documentsWithQuery[docId]});
     }
     sortedDocs.sort((a, b) => {
-      return b[1][0] - a[1][0];
+      return b.score - a.score;
     });
-    console.log(`Matching results for the query: ${queryStr}`);
-    for (let i = 0; i < sortedDocs.length; i++) {
-      let docId = sortedDocs[i][0];
-      console.log(`${i + 1}. ${this.listOfDocIds[docId]}`);
-    }
+    return sortedDocs;
   }
 
   /**
@@ -159,7 +148,7 @@ class DocStore {
    * @returns {integer}
    * Calculates the score of a given document, in context of a list of query terms
    */
-  score(doc, queryTerms, idf) {
+  score(doc, queryTerms) {
     let docScore = 0;
     queryTerms.map((query) => {
       let termFrequency = 0;
@@ -169,7 +158,7 @@ class DocStore {
 
       let wordsInDoc = Object.keys(doc).length;
       docScore +=
-        (idf[query] * (termFrequency * (this.K + 1))) /
+        (this.idf(query) * (termFrequency * (this.K + 1))) /
         (termFrequency +
           this.K * (1 - this.B + (this.B * wordsInDoc) / this.averageLength));
     });
@@ -181,21 +170,12 @@ class DocStore {
    * @returns {object}
    * Given a list of query terms, returns an object with containing the inverse document frequency of each document
    */
-  idf(queryTerms) {
-    let documentFrequency = {};
-    queryTerms.map((query) => {
-      let documentCount = 0;
-      for (let docId in this.documentList) {
-        if (this.documentList[docId].hasOwnProperty(query)) {
-          documentCount++;
-        }
-      }
-      documentFrequency[query] = Math.log(
-        (this.totalWordCount - documentCount + 0.5) / (documentCount + 0.5) + 1
-      );
-      return;
-    });
-    return documentFrequency;
+  idf(query) {
+    let documentCount = 0;
+    documentCount = this.wordList[query] || 0;
+    return Math.log(
+      (this.totalWordCount - documentCount + 0.5) / (documentCount + 0.5) + 1
+    );
   }
 }
 
@@ -204,7 +184,15 @@ newDocuments.insert("Hey There. This is document 1");
 newDocuments.insert("Hello! Document 2 says hi!");
 newDocuments.insert("Hi, Document 3 reporting ot!");
 newDocuments.insert("NOPE; polar bear");
-newDocuments.search("document there");
-newDocuments.search("polar");
-newDocuments.search("ot document");
-newDocuments.search("fibonacci");
+
+
+
+function logAndSearch(store, queries){
+  queries.map((query) => {
+    console.log(`Query: ${query}`);
+    console.log(store.search(query));
+    console.log("____")
+  })
+}
+
+logAndSearch(newDocuments, ["document there", "polar", "ot document", "fibonacci"])

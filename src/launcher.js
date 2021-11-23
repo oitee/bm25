@@ -1,16 +1,17 @@
 import Store from "./store.js";
-function launch() {
+async function launch() {
   let store = new Store();
-  store.insert("Hey There. This is document 1");
-  store.insert("Hello! Document 2 says hi!");
-  store.insert("Hi, Document 3 reporting ot!");
-  store.insert("NOPE; polar bear");
+  store.insert("1", "Hey There. This is document 1");
+  store.insert("2", "Hello! Document 2 says hi!");
+  store.insert("3", "Hi, Document 3 reporting ot!");
+  store.insert("4", "NOPE; polar bear");
 
   const queries = ["document there", "polar", "ot document", "fibonacci"];
-  queries.map((query) => {
-    console.log(`Query: ${query}`);
-    console.table(store.search(query));
-    console.log("____");
+  queries.map(async (query) => {
+    store.search(query).then((results) => {
+      console.log(`Query: ${query}`);
+      console.table(results);
+    });
   });
 }
 launch();

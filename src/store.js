@@ -16,13 +16,13 @@ export default class Store {
      * {object{object}} documentList
      * To store, on a document level, the number of occurences of each word of every document.
      */
-    this.documentTF = {};
+    this.documentTF = new Map();
 
     /**
      * {object{object}} wordList
      * To store, on a word level, the number of documents each word is present
      */
-    this.wordDocFreq = {};
+    this.wordDocFreq = new Map();
 
     /**
      * {integer} totalWordCount
@@ -46,7 +46,7 @@ export default class Store {
      * {object} listOfDocIds
      * To store all document IDs and their respect documents, as key-value pairs
      */
-    this.docIndex = {};
+    this.docIndex = new Map();
   }
   /**
    *
@@ -55,31 +55,31 @@ export default class Store {
    * Inserts a new document in the system
    */
 
-  insert(id, str) {
+  async insert(id, str) {
     str = str.toLowerCase();
 
-    this.docIndex[id] = str;
+    this.docIndex.set(id, str);
     let words = this.wordArray(str);
     words.map((word) => {
       // todo: Remove duplicate words within a document; alt, use set to [or remove duplicates]
-      if (this.wordDocFreq.hasOwnProperty(word)) {
-        this.wordDocFreq[word]++;
+      if (this.wordDocFreq.has(word)) {
+        this.wordDocFreq.set(word, this.wordDocFreq.get(word) + 1);
       } else {
-        this.wordDocFreq[word] = 1;
+        this.wordDocFreq.set(word, 1);
       }
     });
-    let wordsInDoc = {}; // Todo: convert into a JS MAP
+    let wordsInDoc = new Map();
     let wordCount = 0;
     words.map((word) => {
-      if (wordsInDoc.hasOwnProperty(word)) {
-        wordsInDoc[word]++;
+      if (wordsInDoc.has(word)) {
+        wordsInDoc.set(word, wordsInDoc.get(word) + 1);
       } else {
-        wordsInDoc[word] = 1;
+        wordsInDoc.set(word, 1);
       }
       wordCount++;
     });
 
-    this.documentTF[id] = wordsInDoc;
+    this.documentTF.set(id, wordsInDoc);
     this.totalWordCount += wordCount;
     this.numberOfDocs++;
     this.averageLength = this.totalWordCount / this.numberOfDocs;
@@ -106,9 +106,9 @@ export default class Store {
     const queryTerms = this.wordArray(queryStr);
 
     const scoreDocs = await Promise.all(
-      Object.keys(this.docIndex).map(async (id) => {
-        let result = await this.score(id, this.documentTF[id], queryTerms);
-        result.text = this.docIndex[id].substring(0, 50) + "...";
+      Array.from(this.docIndex.keys()).map(async (id) => {
+        let result = await this.score(id, this.documentTF.get(id), queryTerms);
+        result.text = this.docIndex.get(id).substring(0, 50) + "...";
         return result;
       })
     );
@@ -132,11 +132,11 @@ export default class Store {
     let docScore = 0;
     queryTerms.map((query) => {
       let termFrequency = 0;
-      if (doc.hasOwnProperty(query)) {
-        termFrequency = doc[query];
+      if (doc.has(query)) {
+        termFrequency = doc.get(query);
       }
 
-      let wordsInDoc = Object.keys(doc).length;
+      let wordsInDoc = doc.size;
       docScore +=
         (this.idf(query) * (termFrequency * (K + 1))) /
         (termFrequency + K * (1 - B + (B * wordsInDoc) / this.averageLength));
@@ -151,7 +151,7 @@ export default class Store {
    */
   idf(query) {
     let documentCount = 0;
-    documentCount = this.wordDocFreq[query] || 0;
+    documentCount = this.wordDocFreq.get(query) || 0;
     return Math.log(
       (this.totalWordCount - documentCount + 0.5) / (documentCount + 0.5) + 1
     );

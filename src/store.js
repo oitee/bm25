@@ -55,7 +55,7 @@ export default class Store {
     const seenWords = new Set();
     const wordsInDoc = new Map();
 
-    words.forEach((word) => {
+    words.forEach(word => {
       //Calculating inverse document frequency
       if (!seenWords.has(word)) {
         if (this.wordDocFreq.has(word)) {
@@ -90,7 +90,7 @@ export default class Store {
     return str
       .toLocaleLowerCase()
       .split(/[\W]+/)
-      .filter((word) => word.length > 0);
+      .filter(word => word.length > 0);
   }
 
   /**
@@ -103,14 +103,14 @@ export default class Store {
     const queryTerms = this.extractWords(queryStr);
 
     const scoreDocs = await Promise.all(
-      this.docIDs().map(async (id) => {
+      this.docIDs().map(async id => {
         let result = await this.score(id, queryTerms);
         result.text = this.docIndex.get(id).text.substring(0, 50) + "...";
         return result;
       })
     );
     return scoreDocs
-      .filter((doc) => doc.score > 0)
+      .filter(doc => doc.score > 0)
       .sort((a, b) => {
         return b.score - a.score;
       })

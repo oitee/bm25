@@ -1,0 +1,2 @@
+dataset/movie.metadata.tsv filter=lfs diff=lfs merge=lfs -text
+dataset/plot_summaries.tsv filter=lfs diff=lfs merge=lfs -text

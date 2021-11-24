@@ -11,6 +11,12 @@ const K = 1.5;
 const B = 0.75;
 
 export default class Store {
+  documentTF;
+  wordDocFreq;
+  wordCount;
+  docCount;
+  docIndex;
+
   constructor() {
     /**
      * {Map} documentTF

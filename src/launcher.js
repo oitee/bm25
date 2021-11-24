@@ -9,16 +9,7 @@ function rawData() {
       let lineObj = JSON.parse(line);
       return { text: lineObj["plot_synopsis"], id: lineObj.id };
     });
-  const reviews = fs
-    .readFileSync("dataset/IMDB_movie_reviews.txt", "utf8")
-    .split("\n")
-    .map((line) => {
-      return {
-        text: line,
-        id: line.substring(0, 50).replace(/[^a-z0-9]/gi, "_"),
-      };
-    });
-  return movies.concat(reviews);
+  return movies;
 }
 
 async function launch() {
@@ -45,6 +36,5 @@ launch();
 
 //ToDo:
 /** correct comments
- * index 1500 movie plots
- *
+ 
  * */

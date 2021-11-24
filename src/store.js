@@ -13,49 +13,50 @@ const B = 0.75;
 export default class Store {
   constructor() {
     /**
-     * {object{object}} documentList
-     * To store, on a document level, the number of occurences of each word of every document.
+     * {Map} documentTF
+     * On a document level, the number of occurences of each word of every document.
      */
     this.documentTF = new Map();
 
     /**
-     * {object{object}} wordList
-     * To store, on a word level, the number of documents each word is present
+     * {Map} wordDocFreq
+     * On a word level, the number of documents each word is present
      */
     this.wordDocFreq = new Map();
 
     /**
-     * {integer} totalWordCount
-     * To store the total number of words in all documents combined, required for calculating average length of documents in words
+     * {integer} wordCount
+     * The total number of words in all documents combined, required for calculating average length of documents in words
      */
     this.wordCount = 0;
 
     /**
-     * {integer} numberOfDocs
-     * To store the total number of documents
+     * {integer} docCount
+     * The total number of documents
      */
     this.docCount = 0;
 
     /**
-     * {object} listOfDocIds
-     * To store all document IDs and their respect documents, as key-value pairs
+     * {Map} docIndex
+     * All document IDs and their respect documents and the words
      */
     this.docIndex = new Map();
   }
+
   /**
    *
-   * @param {string} str
+   * @param {String} id
+   * @param {String} text
    * @returns {null}
-   * Inserts a new document in the system
+   * Inserts a new document in the store
    */
-
-  async insert(id, str) {
-    const words = this.extractWords(str);
-    this.docIndex.set(id, { text: str, words: words });
+  async insert(id, text) {
+    const words = this.extractWords(text);
+    this.docIndex.set(id, { text: text, words: words });
     const seenWords = new Set();
     const wordsInDoc = new Map();
 
-    words.forEach(word => {
+    words.forEach((word) => {
       //Calculating inverse document frequency
       if (!seenWords.has(word)) {
         if (this.wordDocFreq.has(word)) {
@@ -81,49 +82,53 @@ export default class Store {
 
   /**
    *
-   * @param {string} str
-   * @returns {array}
-   * Converts a string into an array of words
-   */
-
-  extractWords(str) {
-    return str
-      .toLocaleLowerCase()
-      .split(/[\W]+/)
-      .filter(word => word.length > 0);
-  }
-
-  /**
-   *
    * @param {string} queryStr
-   * @returns {null}
-   * Implements query search and logs the documents which contain the query string, in order of relevance
+   * @param {integer} limit
+   * @returns {object[]}
+   * Search the store and return the top matching documents, in order of relevance
    */
   async search(queryStr, limit = 10) {
     const queryTerms = this.extractWords(queryStr);
 
     const scoreDocs = await Promise.all(
-      this.docIDs().map(async id => {
+      this.docIDs().map(async (id) => {
         let result = await this.score(id, queryTerms);
         result.text = this.docIndex.get(id).text.substring(0, 50) + "...";
         return result;
       })
     );
     return scoreDocs
-      .filter(doc => doc.score > 0)
+      .filter((doc) => doc.score > 0)
       .sort((a, b) => {
         return b.score - a.score;
       })
       .slice(0, limit);
   }
 
+  //-------------------------------------------------------------
+  // PRIVATE METHODS
+  //-------------------------------------------------------------
+
   /**
    *
-   * @param {string} docWordFreq
-   * @param {array} queryTerms
-   * @param {object} idf
-   * @returns {integer}
-   * Calculates the score of a given document, in context of a list of query terms
+   * @param {string} str
+   * @returns {array}
+   * Converts a string into an array of words
+   */
+  extractWords(str) {
+    return str
+      .toLocaleLowerCase()
+      .split(/[\W]+/)
+      .filter((word) => word.length > 0);
+  }
+
+  /**
+   *
+   * @param {String} docId
+   * @param {String[]} queryTerms
+   * @returns {Object}
+   * Calculate score of current document, for query terms
+   * See also: https://en.wikipedia.org/wiki/Okapi_BM25
    */
   async score(docId, queryTerms) {
     const wordFreq = this.documentTF.get(docId);
@@ -142,9 +147,10 @@ export default class Store {
   }
   /**
    *
-   * @param {array} queryTerms
-   * @returns {object}
-   * Given a list of query terms, returns an object with containing the inverse document frequency of each document
+   * @param {string} queryTerm
+   * @returns {number}
+   * Calculate the inverse document frequency.
+   * See also: https://en.wikipedia.org/wiki/Okapi_BM25
    */
   idf(queryTerm) {
     const documentCount = this.wordDocFreq.get(queryTerm) || 0;
@@ -153,10 +159,21 @@ export default class Store {
     );
   }
 
+  /**
+   *
+   * @returns {String[]}
+   * Returns all document IDs in the store
+   */
   docIDs() {
     return Array.from(this.docIndex.keys());
   }
 
+  /**
+   *
+   * @param {String} id
+   * @returns {integer}
+   * Returns the count of words in current document
+   */
   wordCountInDoc(id) {
     return this.docIndex.get(id).words.length;
   }

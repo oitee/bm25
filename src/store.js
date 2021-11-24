@@ -110,6 +110,15 @@ export default class Store {
       })
       .slice(0, limit);
   }
+  
+  /**
+   * 
+   * @returns {integer}
+   * Returns the number of documents in the Store
+   */
+  getDocCount(){
+      return this.#docCount;
+  }
 
   //-------------------------------------------------------------
   // PRIVATE METHODS

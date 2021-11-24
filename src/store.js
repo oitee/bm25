@@ -98,7 +98,7 @@ export default class Store {
 
     const scoreDocs = await Promise.all(
       this.#docIDs().map(async (id) => {
-        let result = await this.#score(id, queryTerms);
+        const result = await this.#score(id, queryTerms);
         result.text = this.#docIndex.get(id).text.substring(0, 50) + "...";
         return result;
       })

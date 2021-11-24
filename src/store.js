@@ -28,19 +28,13 @@ export default class Store {
      * {integer} totalWordCount
      * To store the total number of words in all documents combined, required for calculating average length of documents in words
      */
-    this.totalWordCount = 0;
+    this.wordCount = 0;
 
     /**
      * {integer} numberOfDocs
      * To store the total number of documents
      */
-    this.numberOfDocs = 0;
-
-    /**
-     * {integer} averageLength
-     * To store the average length (in words) of all the documents
-     */
-    this.averageLength = 0;
+    this.docCount = 0;
 
     /**
      * {object} listOfDocIds
@@ -56,33 +50,33 @@ export default class Store {
    */
 
   async insert(id, str) {
-    str = str.toLowerCase();
+    const words = this.extractWords(str);
+    this.docIndex.set(id, { text: str, words: words });
+    const seenWords = new Set();
+    const wordsInDoc = new Map();
 
-    this.docIndex.set(id, str);
-    let words = this.wordArray(str);
-    words.map((word) => {
-      // todo: Remove duplicate words within a document; alt, use set to [or remove duplicates]
-      if (this.wordDocFreq.has(word)) {
-        this.wordDocFreq.set(word, this.wordDocFreq.get(word) + 1);
-      } else {
-        this.wordDocFreq.set(word, 1);
+    words.forEach((word) => {
+      //Calculating inverse document frequency
+      if (!seenWords.has(word)) {
+        if (this.wordDocFreq.has(word)) {
+          this.wordDocFreq.set(word, this.wordDocFreq.get(word) + 1);
+        } else {
+          this.wordDocFreq.set(word, 1);
+        }
       }
-    });
-    let wordsInDoc = new Map();
-    let wordCount = 0;
-    words.map((word) => {
+      seenWords.add(word);
+
+      // Calculating per-document term frequency
       if (wordsInDoc.has(word)) {
         wordsInDoc.set(word, wordsInDoc.get(word) + 1);
       } else {
         wordsInDoc.set(word, 1);
       }
-      wordCount++;
     });
 
     this.documentTF.set(id, wordsInDoc);
-    this.totalWordCount += wordCount;
-    this.numberOfDocs++;
-    this.averageLength = this.totalWordCount / this.numberOfDocs;
+    this.wordCount += words.length;
+    this.docCount++;
   }
 
   /**
@@ -92,8 +86,11 @@ export default class Store {
    * Converts a string into an array of words
    */
 
-  wordArray(str) {
-    return str.split(/[\W]+/).filter((word) => word.length > 0);
+  extractWords(str) {
+    return str
+      .toLocaleLowerCase()
+      .split(/[\W]+/)
+      .filter((word) => word.length > 0);
   }
 
   /**
@@ -103,12 +100,12 @@ export default class Store {
    * Implements query search and logs the documents which contain the query string, in order of relevance
    */
   async search(queryStr, limit = 10) {
-    const queryTerms = this.wordArray(queryStr);
+    const queryTerms = this.extractWords(queryStr);
 
     const scoreDocs = await Promise.all(
-      Array.from(this.docIndex.keys()).map(async (id) => {
-        let result = await this.score(id, this.documentTF.get(id), queryTerms);
-        result.text = this.docIndex.get(id).substring(0, 50) + "...";
+      this.docIDs().map(async (id) => {
+        let result = await this.score(id, queryTerms);
+        result.text = this.docIndex.get(id).text.substring(0, 50) + "...";
         return result;
       })
     );
@@ -122,25 +119,25 @@ export default class Store {
 
   /**
    *
-   * @param {string} doc
+   * @param {string} docWordFreq
    * @param {array} queryTerms
    * @param {object} idf
    * @returns {integer}
    * Calculates the score of a given document, in context of a list of query terms
    */
-  async score(docId, doc, queryTerms) {
-    let docScore = 0;
-    queryTerms.map((query) => {
-      let termFrequency = 0;
-      if (doc.has(query)) {
-        termFrequency = doc.get(query);
-      }
+  async score(docId, queryTerms) {
+    const wordFreq = this.documentTF.get(docId);
 
-      let wordsInDoc = doc.size;
+    const docScore = queryTerms.reduce((docScore, query) => {
+      const termFrequency = wordFreq.get(query) || 0;
+      const wordsInDoc = this.wordCountInDoc(docId);
+      const avgLength = this.wordCount / this.docCount;
+
       docScore +=
         (this.idf(query) * (termFrequency * (K + 1))) /
-        (termFrequency + K * (1 - B + (B * wordsInDoc) / this.averageLength));
-    });
+        (termFrequency + K * (1 - B + (B * wordsInDoc) / avgLength));
+      return docScore;
+    }, 0);
     return { score: docScore, id: docId };
   }
   /**
@@ -149,11 +146,18 @@ export default class Store {
    * @returns {object}
    * Given a list of query terms, returns an object with containing the inverse document frequency of each document
    */
-  idf(query) {
-    let documentCount = 0;
-    documentCount = this.wordDocFreq.get(query) || 0;
+  idf(queryTerm) {
+    const documentCount = this.wordDocFreq.get(queryTerm) || 0;
     return Math.log(
-      (this.totalWordCount - documentCount + 0.5) / (documentCount + 0.5) + 1
+      (this.wordCount - documentCount + 0.5) / (documentCount + 0.5) + 1
     );
+  }
+
+  docIDs() {
+    return Array.from(this.docIndex.keys());
+  }
+
+  wordCountInDoc(id) {
+    return this.docIndex.get(id).words.length;
   }
 }

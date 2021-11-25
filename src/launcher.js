@@ -9,7 +9,8 @@ function rawData() {
       const lineObj = JSON.parse(line);
       return { text: lineObj["plot_synopsis"], id: lineObj.id };
     });
-  const idToName = fs
+  
+    const idToName = fs
     .readFileSync("dataset/movie.metadata.tsv", "utf8")
     .split("\n")
     .reduce((acc, line) => {
@@ -19,7 +20,8 @@ function rawData() {
       acc.set(id, title);
       return acc;
     }, new Map());
-  const movies2 = fs
+  
+    const movies2 = fs
     .readFileSync("dataset/plot_summaries.tsv", "utf8")
     .split("\n")
     .map(line => {
@@ -38,6 +40,7 @@ function rawData() {
 
 async function launch() {
   const store = new Store();
+  
   log(`Inserting documents into Store...`);
   await Promise.all(
     rawData().map(async ({ text: text, id: id }) => {
@@ -45,13 +48,14 @@ async function launch() {
     })
   );
   log(`Inserted ${store.getDocCount()} documents into Store...`);
+  
   const queries = [
     "Al Pacino",
     "Robert De niro",
     "Ship iceberg atlantic",
     "fibonacci",
   ];
-  queries.map(async query => {
+  queries.forEach(async query => {
     store.search(query).then(results => {
       log(`Search Results for: ${query}`);
       console.table(results);
@@ -62,9 +66,7 @@ async function launch() {
 function log(str){
     console.log(`\n${new Date()}: ${str}`)
 }
+
+
 launch();
 
-//ToDo:
-/** correct comments
- 
- * */

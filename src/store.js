@@ -14,7 +14,7 @@ export default class Store {
   #documentTF;
   #wordDocFreq;
   #wordCount;
-  #docCount;
+  #totalDocCount;
   #docIndex;
 
   constructor() {
@@ -37,10 +37,10 @@ export default class Store {
     this.#wordCount = 0;
 
     /**
-     * {integer} #docCount
+     * {integer} #totalDocCount
      * The total number of documents
      */
-    this.#docCount = 0;
+    this.#totalDocCount = 0;
 
     /**
      * {Map} #docIndex
@@ -83,7 +83,7 @@ export default class Store {
 
     this.#documentTF.set(id, wordsInDoc);
     this.#wordCount += words.length;
-    this.#docCount++;
+    this.#totalDocCount++;
   }
 
   /**
@@ -117,7 +117,7 @@ export default class Store {
    * Returns the number of documents in the Store
    */
   getDocCount(){
-      return this.#docCount;
+      return this.#totalDocCount;
   }
 
   //-------------------------------------------------------------
@@ -151,7 +151,7 @@ export default class Store {
     const docScore = queryTerms.reduce((docScore, query) => {
       const termFrequency = wordFreq.get(query) || 0;
       const wordsInDoc = this.#wordCountInDoc(docId);
-      const avgLength = this.#wordCount / this.#docCount;
+      const avgLength = this.#wordCount / this.#totalDocCount;
 
       docScore +=
         (this.#idf(query) * (termFrequency * (K + 1))) /
@@ -170,7 +170,7 @@ export default class Store {
   #idf(queryTerm) {
     const documentCount = this.#wordDocFreq.get(queryTerm) || 0;
     return Math.log(
-      (this.#wordCount - documentCount + 0.5) / (documentCount + 0.5) + 1
+      (this.#totalDocCount - documentCount + 0.5) / (documentCount + 0.5) + 1
     );
   }
 
